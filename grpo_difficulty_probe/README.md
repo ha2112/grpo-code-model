@@ -54,7 +54,7 @@ MONOLITH_URL=https://your-monolith.example/execute ./train.sh
 
 Defaults and overrides:
 
-- Policy: `Elfsong/Qwen2.5-Coder-3B-Venus-Cold-Start`; override with
+- Policy: `Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start`; override with
   `PROBE_CURRICULUM_POLICY_MODEL`.
 - Data directory: `./data`; override with `PROBE_CURRICULUM_DATA_DIR`.
 - Checkpoints: `./checkpoints`; override with

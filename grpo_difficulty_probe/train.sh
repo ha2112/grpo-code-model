@@ -4,7 +4,7 @@ set -x
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${PROBE_CURRICULUM_DATA_DIR:-${SCRIPT_DIR}/data}"
-MODEL_PATH="${PROBE_CURRICULUM_POLICY_MODEL:-Elfsong/Qwen2.5-Coder-3B-Venus-Cold-Start}"
+MODEL_PATH="${PROBE_CURRICULUM_POLICY_MODEL:-Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start}"
 CHECKPOINT_DIR="${PROBE_CURRICULUM_CHECKPOINT_DIR:-${SCRIPT_DIR}/checkpoints}"
 MODEL_CACHE_DIR="${HF_HOME:-${SCRIPT_DIR}/model-cache}"
 export HF_HOME="${MODEL_CACHE_DIR}"

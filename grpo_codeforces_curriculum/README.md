@@ -34,7 +34,7 @@ parquet rows from low to high `cf_rating` instead of randomizing the dataset.
 
 Defaults and overrides:
 
-- Policy: `Elfsong/Qwen2.5-Coder-3B-Venus-Cold-Start`; override with
+- Policy: `Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start`; override with
   `CODEFORCES_CURRICULUM_MODEL_PATH`.
 - Data directory: `./data`; override with `CODEFORCES_CURRICULUM_DATA_DIR`.
 - Checkpoints: `./checkpoints`; override with

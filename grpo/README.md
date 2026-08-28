@@ -24,7 +24,7 @@ directory:
 ```
 
 The launcher defaults to `~/data/venus` for the parquet files and the
-`Elfsong/Qwen2.5-Coder-3B-Venus-Cold-Start` policy. Override them with
+`Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start` policy. Override them with
 `AFTERBURNER_DATA_DIR` and `AFTERBURNER_MODEL_PATH`; override `HF_HOME` to
 choose the model cache location.
 

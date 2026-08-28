@@ -5,7 +5,7 @@ set -x
 # Override these for a cluster-specific data/model location.
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${AFTERBURNER_DATA_DIR:-${HOME}/data/venus}"
-MODEL_PATH="${AFTERBURNER_MODEL_PATH:-Elfsong/Qwen2.5-Coder-3B-Venus-Cold-Start}"
+MODEL_PATH="${AFTERBURNER_MODEL_PATH:-Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start}"
 HF_HOME="${HF_HOME:-${SCRIPT_DIR}/../model-cache}"
 export HF_HOME
 
