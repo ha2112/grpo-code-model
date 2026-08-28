@@ -38,7 +38,7 @@ EFFICIENCY_INSTRUCTIONS = {
 
 if __name__ == "__main__":
     sample_num = 1
-    local_dir = "~/data/venus"
+    local_dir = os.path.expanduser(os.environ.get("AFTERBURNER_DATA_DIR", "~/data/venus"))
     data_source = "Elfsong/Venus_Python"
     dataset = datasets.load_dataset(data_source)
     train_dataset = dataset["train"]
@@ -109,5 +109,6 @@ if __name__ == "__main__":
     train_dataset = datasets.concatenate_datasets(train_datasets)
     test_dataset = datasets.concatenate_datasets(test_datasets)
     
+    os.makedirs(local_dir, exist_ok=True)
     train_dataset.to_parquet(os.path.join(local_dir, "venus_train.parquet"))
     test_dataset.to_parquet(os.path.join(local_dir, "venus_test.parquet"))

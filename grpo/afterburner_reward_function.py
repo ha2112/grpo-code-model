@@ -215,8 +215,7 @@ def performance_evalution(solution_str: str, extra_info: dict) -> dict:
         response['status'] = 'timeout (client)'
     except Exception as e:
         response['status'] = 'error'
-    finally:
-        return response
+    return response
 
 def improvement_reward_fn_batch(data_sources, solution_strs, ground_truths, extra_infos=None) -> list[float]:        
     # Send the batch request to Monolith
