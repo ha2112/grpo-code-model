@@ -1,0 +1,9 @@
+numpy
+pandas
+pyarrow
+scikit-learn
+tqdm
+torch
+transformers
+datasets
+huggingface_hub
