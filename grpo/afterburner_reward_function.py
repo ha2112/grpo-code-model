@@ -11,6 +11,7 @@ import debugpy
 import requests
 import textwrap
 import itertools
+import os
 import numpy as np
 from tqdm import tqdm
 from multiprocessing.pool import ThreadPool
@@ -195,7 +196,8 @@ def performance_evalution(solution_str: str, extra_info: dict) -> dict:
             'timeout': 90,
             'run_profiling': True
         }
-        monolith_response = requests.post(f'https://monolith.cool/execute', json=data, timeout=90)
+        monolith_url = os.environ.get('MONOLITH_URL', 'https://monolith.cool/execute')
+        monolith_response = requests.post(monolith_url, json=data, timeout=90)
         if monolith_response.status_code == 200:
             monolith_response = monolith_response.json()
 

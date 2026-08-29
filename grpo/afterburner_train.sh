@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${AFTERBURNER_DATA_DIR:-${HOME}/data/venus}"
 MODEL_PATH="${AFTERBURNER_MODEL_PATH:-Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start}"
 HF_HOME="${HF_HOME:-${SCRIPT_DIR}/../model-cache}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 export HF_HOME
 
 # If you are using vllm<=0.6.3, you might need this to avoid bugs:
@@ -15,7 +16,7 @@ export HF_HOME
 train_files="['${DATA_DIR}/venus_train.parquet']"
 test_files="['${DATA_DIR}/venus_test.parquet']"
 
-python3 -m verl.trainer.main_ppo \
+"${PYTHON_BIN}" -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
     data.train_files="${train_files}" \
     data.val_files="${test_files}" \

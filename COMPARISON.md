@@ -24,6 +24,19 @@ the `.env` controls. For example:
 ./run_grpo_comparison.sh probe trainer.total_training_steps=10
 ```
 
+Run the launcher from the GRPO conda environment, or set `PYTHON_BIN` to its
+Python executable. The launcher checks that `verl` imports before starting a
+job:
+
+```bash
+conda activate probing-difficulty-linear
+./run_grpo_comparison.sh absolute
+```
+
+GRPO requires a Linux/CUDA environment with a compatible `verl` and vLLM
+installation; the local Apple Silicon machine is suitable only for the MPS
+model smoke test below.
+
 ## Exact-model Mac smoke test
 
 The local smoke test loads the same checkpoint configured in `.env`, performs

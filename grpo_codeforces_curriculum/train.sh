@@ -7,12 +7,13 @@ DATA_DIR="${CODEFORCES_CURRICULUM_DATA_DIR:-${SCRIPT_DIR}/data}"
 MODEL_PATH="${CODEFORCES_CURRICULUM_MODEL_PATH:-Elfsong/Qwen2.5-Coder-3B-Instruct-Venus-Cold-Start}"
 CHECKPOINT_DIR="${CODEFORCES_CURRICULUM_CHECKPOINT_DIR:-${SCRIPT_DIR}/checkpoints}"
 MODEL_CACHE_DIR="${HF_HOME:-${SCRIPT_DIR}/model-cache}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 export HF_HOME="${MODEL_CACHE_DIR}"
 
 train_files="['${DATA_DIR}/codeforces_train_easy_to_hard.parquet']"
 validation_files="['${DATA_DIR}/codeforces_validation_easy_to_hard.parquet']"
 
-python3 -m verl.trainer.main_ppo \
+"${PYTHON_BIN}" -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
     data.train_files="${train_files}" \
     data.val_files="${validation_files}" \

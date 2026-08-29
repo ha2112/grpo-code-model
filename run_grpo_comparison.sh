@@ -14,6 +14,19 @@ set -a
 source "${ENV_FILE}"
 set +a
 
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+    echo "Python executable not found: ${PYTHON_BIN}" >&2
+    echo "Activate the probing-difficulty conda environment or set PYTHON_BIN." >&2
+    exit 1
+fi
+if ! "${PYTHON_BIN}" -c 'import verl' >/dev/null 2>&1; then
+    echo "verl is not installed in ${PYTHON_BIN}." >&2
+    echo "Install a CUDA/Linux-compatible verl environment before launching GRPO." >&2
+    exit 1
+fi
+export PYTHON_BIN
+
 route="${1:-all}"
 if [[ $# -gt 0 ]]; then
     shift
@@ -113,6 +126,7 @@ run_venus() {
     AFTERBURNER_MODEL_PATH="${comparison_model}" \
     AFTERBURNER_DATA_DIR="${venus_data_dir}" \
     HF_HOME="${model_cache_dir}" \
+    MONOLITH_URL="${MONOLITH_URL}" \
     bash "${REPO_DIR}/grpo/afterburner_train.sh" \
         "${common_overrides[@]}" \
         "trainer.default_local_dir=${runs_dir}/venus-seed-${COMPARISON_SEED}" \
