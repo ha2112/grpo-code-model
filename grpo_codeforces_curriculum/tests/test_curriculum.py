@@ -32,6 +32,10 @@ class CurriculumDatasetTests(unittest.TestCase):
             "cf_rating": 900,
             "cf_contest_id": 10,
             "cf_index": "A",
+            "solutions": {
+                "language": ["python3"],
+                "solution": ["print(input())"],
+            },
             "public_tests": {"input": ["1\n"], "output": ["1\n"]},
             "private_tests": {"input": ["2\n"], "output": ["2\n"]},
             "generated_tests": {"input": [], "output": []},
@@ -42,6 +46,11 @@ class CurriculumDatasetTests(unittest.TestCase):
         self.assertEqual(record["extra_info"]["cf_rating"], 900)
         self.assertEqual(record["extra_info"]["curriculum_order"], 900)
         self.assertEqual(len(record["reward_model"]["ground_truth"]["tests"]), 2)
+        self.assertIn("print(input())", record["prompt"][1]["content"])
+        self.assertEqual(
+            record["reward_model"]["ground_truth"]["baseline_solution"],
+            "print(input())",
+        )
 
 
 class RewardParsingTests(unittest.TestCase):

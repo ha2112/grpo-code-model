@@ -24,11 +24,20 @@ program inside <solution> </solution> as one markdown Python code block."""
 USER_TEMPLATE = """## Problem
 {description}
 
+## Original Solution
+{baseline_solution}
+
+## Original Performance
+Unavailable: CodeContests provides no baseline runtime or memory measurements.
+
 ## Output format
 Return exactly:
 <thinking>your reasoning</thinking><solution>```python
 complete Python 3 program
 ```</solution>
+
+Fix the original solution if it is incorrect. Otherwise, improve it while
+preserving correctness.
 """
 
 
@@ -57,6 +66,36 @@ def collect_tests(problem):
     return tests
 
 
+def _baseline_code(problem):
+    """Return one deterministic Python solution from CodeContests."""
+    solutions = problem.get("solutions") or {}
+    if isinstance(solutions, dict):
+        codes = solutions.get("solution") or solutions.get("code") or []
+        languages = solutions.get("language") or []
+        if isinstance(codes, str):
+            codes = [codes]
+        if isinstance(languages, str):
+            languages = [languages]
+        candidates = zip(codes, languages or [None] * len(codes))
+    elif isinstance(solutions, list):
+        candidates = ((item, None) for item in solutions)
+    else:
+        candidates = ()
+
+    fallback = ""
+    for item, language in candidates:
+        if isinstance(item, dict):
+            language = item.get("language", language)
+            item = item.get("code") or item.get("solution") or ""
+        if not isinstance(item, str) or not item.strip():
+            continue
+        if not fallback:
+            fallback = item.strip()
+        if language is None or str(language).lower() in {"python", "python2", "python3", "1"}:
+            return item.strip()
+    return fallback
+
+
 def _tie_breaker(problem):
     return (
         int(problem.get("cf_contest_id", 0) or 0),
@@ -67,19 +106,29 @@ def _tie_breaker(problem):
 
 def make_record(problem, split, probe_score, rank, total):
     percentile = rank / (total - 1) if total > 1 else 0.0
+    baseline_solution = _baseline_code(problem)
+    problem_id = f"{problem.get('cf_contest_id', 0)}{problem.get('cf_index', '')}"
+    if not baseline_solution:
+        raise ValueError(f"No baseline solution found for Codeforces problem {problem_id}")
     return {
         "data_source": "codeforces_probe_curriculum",
         "prompt": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": USER_TEMPLATE.format(description=problem.get("description", "")),
+                "content": USER_TEMPLATE.format(
+                    description=problem.get("description", ""),
+                    baseline_solution=baseline_solution,
+                ),
             },
         ],
         "ability": "code",
         "reward_model": {
             "style": "rule",
-            "ground_truth": {"tests": collect_tests(problem)},
+            "ground_truth": {
+                "tests": collect_tests(problem),
+                "baseline_solution": baseline_solution,
+            },
         },
         "extra_info": {
             "split": split,

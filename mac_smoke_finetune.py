@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-step MPS fine-tuning smoke test using the exact comparison model."""
+"""One-step local fine-tuning smoke test using the exact comparison model."""
 
 import argparse
 import json
@@ -20,14 +20,20 @@ def parse_args():
     parser.add_argument("--learning-rate", type=float, default=1e-2)
     parser.add_argument("--max-length", type=int, default=96)
     parser.add_argument("--dtype", choices=("bfloat16", "float16"), default="bfloat16")
+    parser.add_argument("--device", choices=("auto", "mps", "cpu"), default="auto")
     return parser.parse_args()
 
 
-def require_local_mps(model_path):
+def resolve_device(model_path, requested):
     if not model_path.is_dir():
         raise SystemExit(f"Model folder not found: {model_path}")
-    if not torch.backends.mps.is_available():
-        raise SystemExit("MPS is unavailable. Run this from a native Apple Silicon terminal.")
+    if requested == "mps":
+        if not torch.backends.mps.is_available():
+            raise SystemExit("MPS is unavailable in this Torch installation.")
+        return torch.device("mps")
+    if requested == "auto" and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 
 def last_input_norm(model):
@@ -43,12 +49,11 @@ def last_input_norm(model):
 
 def main():
     args = parse_args()
-    require_local_mps(args.model)
+    device = resolve_device(args.model, args.device)
     torch.manual_seed(42)
-    device = torch.device("mps")
     model_dtype = getattr(torch, args.dtype)
 
-    print(f"Loading exact checkpoint from {args.model} in {args.dtype} on MPS...", flush=True)
+    print(f"Loading exact checkpoint from {args.model} in {args.dtype} on {device}...", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(args.model, local_files_only=True)
     model = AutoModelForCausalLM.from_pretrained(
         args.model,

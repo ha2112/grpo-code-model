@@ -41,15 +41,16 @@ model smoke test below.
 
 The local smoke test loads the same checkpoint configured in `.env`, performs
 one real optimizer step on a final-layer RMSNorm parameter, and verifies a
-saved checkpoint round trip:
+saved checkpoint round trip. It prefers MPS and falls back to CPU when MPS is
+unavailable; use `--device mps` or `--device cpu` to force a device:
 
 ```bash
 /opt/anaconda3/bin/python mac_smoke_finetune.py
 ```
 
-It requires native Apple Silicon MPS. It intentionally trains only one small
-parameter so the exact 3B model fits within 16 GB unified memory; distributed
-GRPO behavior is still verified separately by the route launcher tests.
+It intentionally trains only one small parameter so the exact 3B model fits
+within local memory; distributed GRPO behavior is still verified separately
+by the route launcher tests.
 
 For independent cluster jobs, submit the three single-route commands rather
 than `all`. Each route receives the same model, seed, training-step budget,

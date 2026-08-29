@@ -24,6 +24,10 @@ def problem(name, contest, index, rating):
         "cf_rating": rating,
         "cf_contest_id": contest,
         "cf_index": index,
+        "solutions": {
+            "language": ["python3"],
+            "solution": ["print(input())"],
+        },
         "public_tests": {"input": ["1\n"], "output": ["1\n"]},
         "private_tests": {"input": [], "output": []},
         "generated_tests": {"input": [], "output": []},
@@ -51,6 +55,11 @@ class ProbeCurriculumTests(unittest.TestCase):
         self.assertEqual([row["extra_info"]["name"] for row in records], ["high-rating", "low-rating"])
         self.assertEqual([row["extra_info"]["probe_rank"] for row in records], [0, 1])
         self.assertEqual([row["extra_info"]["probe_percentile"] for row in records], [0.0, 1.0])
+        self.assertIn("print(input())", records[0]["prompt"][1]["content"])
+        self.assertEqual(
+            records[0]["reward_model"]["ground_truth"]["baseline_solution"],
+            "print(input())",
+        )
 
     def test_ties_are_deterministic(self):
         second = problem("second", 2, "B", 0)
