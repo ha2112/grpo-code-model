@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Difficulty Probe and Fine-tuning Setup</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.55 system-ui, sans-serif; }
+    body { max-width: 900px; margin: 40px auto; padding: 0 20px; color: #172033; }
+    h1, h2 { color: #102a56; }
+    h1 { margin-bottom: .2rem; }
+    .muted { color: #5d6878; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; }
+    th, td { border: 1px solid #d7dee8; padding: .55rem .7rem; text-align: left; }
+    th { background: #edf3fb; }
+    code { background: #f1f3f5; padding: .1rem .3rem; border-radius: 4px; }
+    .card { background: #f8fafc; border-left: 4px solid #2a78d6; padding: .7rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Difficulty probe and fine-tuning setup</h1>
+  <p class="muted">A compact summary of the current experiment.</p>
+
+  <h2>1. Probe data and results</h2>
+  <p>
+    The probe is trained on the <code>train</code> split of
+    <code>deepmind/code_contests</code>. It keeps only Codeforces examples
+    (<code>source == 2</code>) with a positive <code>cf_rating</code>, giving
+    7,701 rated problems in the current result CSV. The problem description is
+    formatted with the Qwen chat template and passed through a frozen
+    Qwen2.5-1.5B-Instruct model. The feature is the final-layer hidden state at
+    the last input token (1,536 values); a single linear layer predicts the
+    Codeforces rating.
+  </p>
+  <p>
+    The data split is approximately 64% train, 16% validation, and 20% test
+    (seed 42). Feature and target scaling are fit without the test set, then
+    folded into the saved probe so inference uses raw embeddings.
+  </p>
+
+  <table>
+    <thead><tr><th>Scheme</th><th>Bin ranges</th><th>Accuracy</th><th>Macro precision</th><th>Macro recall</th><th>Macro F1</th></tr></thead>
+    <tbody>
+      <tr><td>5 bins</td><td>800–1300; 1300–1700; 1700–2000; 2000–2500; 2500–3500</td><td>43.7%</td><td>49.0%</td><td>43.2%</td><td>44.5%</td></tr>
+      <tr><td>3 bins</td><td>Easy: 800–1300; Mid: 1300–2500; Hard: 2500–3500</td><td>71.3%</td><td>71.8%</td><td>59.9%</td><td>63.4%</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">
+    The 5 bins are rank-based quintiles of the real ratings; the 3-bin result
+    collapses them as Easy / Mid / Hard. Per-bin precision, recall, and F1 are
+    available in <code>img/codecontests_probe_bin_prf.pdf</code>.
+  </p>
+
+  <h2>2. Current fine-tuning setup</h2>
+  <div class="card">
+    <strong>Training method:</strong> Group Relative Policy Optimization
+    (GRPO), launched with <code>grpo/afterburner_train.sh</code> in the
+    Afterburner project.
+  </div>
+  <table>
+    <tbody>
+      <tr><th>Training data</th><td><code>Elfsong/Venus_Python</code>; train and test parquet files are built from Python competitive-programming problems.</td></tr>
+      <tr><th>Tasks</th><td>Improve an original solution for time, memory, or combined time/memory efficiency. The three task variants are concatenated.</td></tr>
+      <tr><th>Policy model</th><td><code>Elfsong/Qwen2.5-Coder-3B-Venus-Cold-Start</code></td></tr>
+      <tr><th>Output</th><td>One <code>&lt;thinking&gt;...&lt;/thinking&gt;&lt;solution&gt;...&lt;/solution&gt;</code> response containing the complete code.</td></tr>
+      <tr><th>Reward</th><td>50% improvement/correctness reward and 20% format reward in the final combination; the configured length component is currently zero. Correct solutions can also receive an efficiency improvement reward.</td></tr>
+      <tr><th>Evaluation</th><td>Generated code is executed against tests through the Monolith endpoint; failures/timeouts receive poor performance scores.</td></tr>
+      <tr><th>Main settings</th><td>GRPO batch size 32, 32 generations, learning rate 1e-6, response limit 8,192 tokens, tensor parallel size 2, 8 GPUs, 200 epochs, checkpoint/test every 10 steps.</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">
+    The difficulty probe is not currently a reward in this Afterburner setup;
+    it is a separate analysis tool. The authoritative implementation is in
+    <code>train_codecontests_probe.py</code> and the fine-tuning launcher is in
+    <code>../Afterburner/grpo/afterburner_train.sh</code>.
+  </p>
+</body>
+</html>
