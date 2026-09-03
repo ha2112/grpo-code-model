@@ -108,7 +108,10 @@ def make_record(problem, split):
     tests = collect_tests(problem)
     baseline_solution = _baseline_code(problem)
     if not baseline_solution:
-        raise ValueError(f"No baseline solution found for Codeforces problem {problem_id}")
+        baseline_solution = (
+            "# No baseline solution is available. "
+            "Solve this problem from scratch."
+        )
     return {
         "data_source": "codeforces_curriculum",
         "prompt": [
