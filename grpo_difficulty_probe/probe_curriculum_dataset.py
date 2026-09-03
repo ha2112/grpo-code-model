@@ -109,7 +109,10 @@ def make_record(problem, split, probe_score, rank, total):
     baseline_solution = _baseline_code(problem)
     problem_id = f"{problem.get('cf_contest_id', 0)}{problem.get('cf_index', '')}"
     if not baseline_solution:
-        raise ValueError(f"No baseline solution found for Codeforces problem {problem_id}")
+        baseline_solution = (
+            "# No baseline solution is available. "
+            "Solve this problem from scratch."
+        )
     return {
         "data_source": "codeforces_probe_curriculum",
         "prompt": [
