@@ -16,6 +16,9 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     data.max_prompt_length=1024 \
     data.max_response_length=512 \
     reward.num_workers=1 \
+    reward.custom_reward_function.path="${SCRIPT_DIR}/codeforces_reward_function.py" \
+    reward.custom_reward_function.name=compute_score \
+    reward.reward_manager.name=naive \
     actor_rollout_ref.rollout.agent.num_workers=1 \
     actor_rollout_ref.model.lora_rank=8 \
     actor_rollout_ref.model.lora_alpha=16 \
