@@ -14,6 +14,9 @@ set -a
 source "${ENV_FILE}"
 set +a
 
+# Keep older local .env files usable after adding the fourth route.
+VENUS_PROBE_DATA_DIR="${VENUS_PROBE_DATA_DIR:-./grpo_venus_difficulty_probe/data}"
+
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
     echo "Python executable not found: ${PYTHON_BIN}" >&2
@@ -33,9 +36,9 @@ if [[ $# -gt 0 ]]; then
 fi
 
 case "${route}" in
-    venus|absolute|probe|all) ;;
+    venus|absolute|probe|venus-probe|all) ;;
     *)
-        echo "Usage: $0 [venus|absolute|probe|all] [additional verl overrides...]" >&2
+        echo "Usage: $0 [venus|absolute|probe|venus-probe|all] [additional verl overrides...]" >&2
         exit 2
         ;;
 esac
@@ -60,6 +63,7 @@ required_vars=(
     VENUS_DATA_DIR
     ABSOLUTE_DATA_DIR
     PROBE_DATA_DIR
+    VENUS_PROBE_DATA_DIR
     MONOLITH_URL
 )
 
@@ -91,6 +95,7 @@ model_cache_dir="$(absolute_path "${COMPARISON_MODEL_CACHE_DIR}")"
 venus_data_dir="$(absolute_path "${VENUS_DATA_DIR}")"
 absolute_data_dir="$(absolute_path "${ABSOLUTE_DATA_DIR}")"
 probe_data_dir="$(absolute_path "${PROBE_DATA_DIR}")"
+venus_probe_data_dir="$(absolute_path "${VENUS_PROBE_DATA_DIR}")"
 comparison_model="${COMPARISON_MODEL}"
 if [[ "${comparison_model}" = ./* || "${comparison_model}" = ../* ]]; then
     comparison_model="$(absolute_path "${comparison_model}")"
@@ -123,6 +128,9 @@ common_overrides=(
 run_venus() {
     validate_file "${venus_data_dir}/venus_train.parquet"
     validate_file "${venus_data_dir}/venus_test.parquet"
+    if [[ "${COMPARISON_SKIP_PREFLIGHT:-false}" != true ]]; then
+        "${PYTHON_BIN}" "${REPO_DIR}/grpo/afterburner_reward_function.py" --check
+    fi
     AFTERBURNER_MODEL_PATH="${comparison_model}" \
     AFTERBURNER_DATA_DIR="${venus_data_dir}" \
     HF_HOME="${model_cache_dir}" \
@@ -137,6 +145,9 @@ run_venus() {
 run_absolute() {
     validate_file "${absolute_data_dir}/codeforces_train_easy_to_hard.parquet"
     validate_file "${absolute_data_dir}/codeforces_validation_easy_to_hard.parquet"
+    if [[ "${COMPARISON_SKIP_PREFLIGHT:-false}" != true ]]; then
+        "${PYTHON_BIN}" "${REPO_DIR}/grpo_codeforces_curriculum/codeforces_reward_function.py" --check
+    fi
     CODEFORCES_CURRICULUM_MODEL_PATH="${comparison_model}" \
     CODEFORCES_CURRICULUM_DATA_DIR="${absolute_data_dir}" \
     CODEFORCES_CURRICULUM_CHECKPOINT_DIR="${runs_dir}/absolute-seed-${COMPARISON_SEED}" \
@@ -151,6 +162,9 @@ run_absolute() {
 run_probe() {
     validate_file "${probe_data_dir}/probe_train_easy_to_hard.parquet"
     validate_file "${probe_data_dir}/probe_validation_easy_to_hard.parquet"
+    if [[ "${COMPARISON_SKIP_PREFLIGHT:-false}" != true ]]; then
+        "${PYTHON_BIN}" "${REPO_DIR}/grpo_difficulty_probe/codeforces_reward_function.py" --check
+    fi
     PROBE_CURRICULUM_POLICY_MODEL="${comparison_model}" \
     PROBE_CURRICULUM_DATA_DIR="${probe_data_dir}" \
     PROBE_CURRICULUM_CHECKPOINT_DIR="${runs_dir}/probe-seed-${COMPARISON_SEED}" \
@@ -162,13 +176,32 @@ run_probe() {
         "$@"
 }
 
+run_venus_probe() {
+    validate_file "${venus_probe_data_dir}/venus_probe_train_easy_to_hard.parquet"
+    validate_file "${venus_probe_data_dir}/venus_probe_test_easy_to_hard.parquet"
+    if [[ "${COMPARISON_SKIP_PREFLIGHT:-false}" != true ]]; then
+        "${PYTHON_BIN}" "${REPO_DIR}/grpo/afterburner_reward_function.py" --check
+    fi
+    VENUS_PROBE_POLICY_MODEL="${comparison_model}" \
+    VENUS_PROBE_DATA_DIR="${venus_probe_data_dir}" \
+    VENUS_PROBE_CHECKPOINT_DIR="${runs_dir}/venus-probe-seed-${COMPARISON_SEED}" \
+    HF_HOME="${model_cache_dir}" \
+    MONOLITH_URL="${MONOLITH_URL}" \
+    bash "${REPO_DIR}/grpo_venus_difficulty_probe/train.sh" \
+        "${common_overrides[@]}" \
+        "trainer.experiment_name=${COMPARISON_PREFIX}-venus-probe-seed-${COMPARISON_SEED}" \
+        "$@"
+}
+
 case "${route}" in
     venus) run_venus "$@" ;;
     absolute) run_absolute "$@" ;;
     probe) run_probe "$@" ;;
+    venus-probe) run_venus_probe "$@" ;;
     all)
         run_venus "$@"
         run_absolute "$@"
         run_probe "$@"
+        run_venus_probe "$@"
         ;;
 esac

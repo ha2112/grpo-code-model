@@ -1,20 +1,17 @@
 # coding=utf-8
 
+from __future__ import annotations
+
 # Author: Mingzhe Du (mingzhe@nus.edu.sg)
 # Date: 2025-04-10
 
+import argparse
 import re
 import time
 import json
-import random
-import debugpy
-import requests
 import textwrap
 import itertools
 import os
-import numpy as np
-from tqdm import tqdm
-from multiprocessing.pool import ThreadPool
 
 
 EVALUATION_TEMPLATE = """import io
@@ -90,9 +87,13 @@ if __name__ == '__main__':
 """
 
 def scale_clip(arr: np.ndarray) -> np.ndarray:
+    import numpy as np
+
     return np.clip(arr, -1.0, 1.0)
 
 def safe_delta(baseline: np.ndarray, current: np.ndarray, scale: float, clip: float) -> np.ndarray:
+    import numpy as np
+
     baseline = np.clip(baseline, 0, clip)
     current = np.clip(current, 0, clip)
     gain = (baseline - current) / (baseline + 1e-9)
@@ -100,15 +101,21 @@ def safe_delta(baseline: np.ndarray, current: np.ndarray, scale: float, clip: fl
     return np.tanh(scale * gain)   
 
 def safe_minmax(x: np.ndarray) -> np.ndarray:
+    import numpy as np
+
     lo, hi = x.min(), x.max()
     normed =  (x - lo) / (hi - lo + 1e-8)
     return scale_clip(normed)
 
 def zscore(x: np.ndarray) -> np.ndarray:
+    import numpy as np
+
     mu, sigma = x.mean(), x.std()
     return (x - mu) / (sigma + 1e-9)
 
 def pass_reward(baseline: np.ndarray, current: np.ndarray) -> np.ndarray:
+    import numpy as np
+
     r = np.full(baseline.shape, -0.5, dtype=np.float32)      # maintain failed
     r[baseline.astype(bool) & current.astype(bool)]  = 0.5   # maintain passed
     r[~baseline.astype(bool) & current.astype(bool)] = 1.0   # new pass
@@ -156,7 +163,77 @@ def extract_code_blocks(text: str) -> list[dict[str, str]]:
         blocks.append({"lang": lang, "code": code})
     return blocks
 
+
+def _extract_stdout(payload):
+    """Read stdout from both legacy and current Monolith responses."""
+    if not isinstance(payload, dict):
+        return None
+
+    output_dict = payload.get("output_dict")
+    if isinstance(output_dict, dict):
+        for key in ("stdout", "output"):
+            if isinstance(output_dict.get(key), str):
+                return output_dict[key]
+
+    for key in ("stdout", "output"):
+        if isinstance(payload.get(key), str):
+            return payload[key]
+
+    data = payload.get("data")
+    if isinstance(data, dict):
+        if isinstance(data.get("stdout"), str):
+            return data["stdout"]
+        outputs = data.get("outputs")
+        if isinstance(outputs, list):
+            parts = [
+                item.get("data", "")
+                for item in outputs
+                if isinstance(item, dict)
+                and item.get("type") == "stdout"
+                and isinstance(item.get("data"), str)
+            ]
+            if parts:
+                return "".join(parts)
+    return None
+
+
+def _metric(payload, key, default):
+    """Read one profiling metric from supported response layouts."""
+    for container in (payload.get("output_dict"), payload.get("data"), payload):
+        if isinstance(container, dict) and isinstance(container.get(key), (int, float)):
+            return container[key]
+    return default
+
+
+def _extract_monolith_result(payload):
+    """Normalize a Monolith response for the Venus reward."""
+    response = {
+        "passed": False,
+        "time": 90000,
+        "memory": 1048576,
+        "integral": 1048576 * 90000,
+        "status": "error",
+    }
+    if not isinstance(payload, dict):
+        return response
+
+    data = payload.get("data")
+    status = payload.get("status")
+    if status is None and isinstance(data, dict):
+        status = data.get("status")
+    response["status"] = status or "error"
+    stdout = _extract_stdout(payload)
+    response["passed"] = status == "success" and bool(
+        stdout and stdout.rstrip().endswith("Success")
+    )
+    response["time"] = _metric(payload, "duration", response["time"])
+    response["memory"] = _metric(payload, "peak_memory", response["memory"])
+    response["integral"] = _metric(payload, "integral", response["integral"])
+    return response
+
 def performance_evalution(solution_str: str, extra_info: dict) -> dict:
+    import requests
+
     # Integrate functional correctness and efficiency
     response = {'passed': False, 'time': 90000, 'memory': 1048576, 'integral': 1048576*90000, 'status': 'error'}
     try:
@@ -199,14 +276,7 @@ def performance_evalution(solution_str: str, extra_info: dict) -> dict:
         monolith_url = os.environ.get('MONOLITH_URL', 'https://monolith.cool/execute')
         monolith_response = requests.post(monolith_url, json=data, timeout=90)
         if monolith_response.status_code == 200:
-            monolith_response = monolith_response.json()
-
-            response['status'] = monolith_response['status']
-            if monolith_response["status"] == "success":
-                response['passed'] = True if monolith_response['output_dict']['stdout'] == 'Success\n' else False
-                response['time'] = monolith_response['output_dict']['duration']
-                response['memory'] = monolith_response['output_dict']['peak_memory']
-                response['integral'] = monolith_response['output_dict']['integral']
+            response = _extract_monolith_result(monolith_response.json())
         elif monolith_response.status_code == 413:
             response['status'] = "too large"
         else:
@@ -220,6 +290,10 @@ def performance_evalution(solution_str: str, extra_info: dict) -> dict:
     return response
 
 def improvement_reward_fn_batch(data_sources, solution_strs, ground_truths, extra_infos=None) -> list[float]:        
+    import numpy as np
+    from multiprocessing.pool import ThreadPool
+    from tqdm import tqdm
+
     # Send the batch request to Monolith
     
     monolith_responses = list()
@@ -317,3 +391,40 @@ def afterburner_reward_fn_batch(data_sources, solution_strs, ground_truths, extr
     print(f"[+]  Afterburner Reward Function Batch [Time Cost: {end_time - start_time:.2f}s]")
 
     return afterburner_scores
+
+
+def check_judge():
+    """Fail fast when the configured sandbox cannot run a trivial solution."""
+    extra_info = {
+        "instance": {
+            "test_case_runners": "==Code Submission==",
+            "test_case_evaluator": (
+                "def evaluate(expected, actual):\n"
+                "    return expected.strip() == actual.strip()"
+            ),
+            "test_cases": json.dumps([{"input": "probe-ok\n", "output": "probe-ok\n"}]),
+        },
+        "case_multiply": 1,
+    }
+    solution = "<thinking>Health check.</thinking><solution>```python\nprint(input())\n```</solution>"
+    result = performance_evalution(solution, extra_info)
+    if not result.get("passed"):
+        raise RuntimeError(
+            f"Venus reward sandbox health check failed: status={result.get('status', 'unknown')}"
+        )
+    print(
+        "Venus reward sandbox is healthy: "
+        f"{os.environ.get('MONOLITH_URL', 'https://monolith.cool/execute')}"
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Afterburner reward utilities")
+    parser.add_argument("--check", action="store_true", help="test the configured sandbox endpoint")
+    args = parser.parse_args()
+    if args.check:
+        check_judge()
+
+
+if __name__ == "__main__":
+    main()

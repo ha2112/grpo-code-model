@@ -154,8 +154,10 @@ class ProbeCurriculumTests(unittest.TestCase):
         self.assertIs(captured["run_profiling"], True)
 
     def test_16gb_launcher_uses_single_gpu_compatible_lora_sync(self):
-        launcher = (ROUTE_DIR / "train_single_gpu_16gb.sh").read_text(encoding="utf-8")
+        entrypoint = (ROUTE_DIR / "train_single_gpu_16gb.sh").read_text(encoding="utf-8")
+        launcher = (ROUTE_DIR.parent / "train_grpo_16gb.sh").read_text(encoding="utf-8")
 
+        self.assertIn('train_grpo_16gb.sh" probe', entrypoint)
         self.assertIn("actor_rollout_ref.model.lora.merge=False", launcher)
         self.assertNotIn("actor_rollout_ref.model.lora.merge=True", launcher)
         self.assertIn("actor_rollout_ref.rollout.layered_summon=False", launcher)

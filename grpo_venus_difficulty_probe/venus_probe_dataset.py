@@ -1,9 +1,9 @@
 """Build a Venus GRPO corpus ordered by the learned difficulty probe."""
 
 import argparse
+import hashlib
 import json
 import os
-import random
 import sys
 from pathlib import Path
 
@@ -54,11 +54,13 @@ def _tie_breaker(problem):
     return str(problem["problem_id"])
 
 
-def _choose_solution(problem, rng):
+def _choose_solution(problem, efficiency_instruction, seed=42):
     solutions = problem.get("solutions") or []
     if not solutions:
         raise ValueError(f"No baseline solution found for Venus problem {problem.get('problem_id', '')}")
-    return rng.choice(solutions)
+    key = f"{seed}:{problem.get('problem_id', '')}:{efficiency_instruction}".encode()
+    index = int.from_bytes(hashlib.sha256(key).digest()[:8], "big") % len(solutions)
+    return solutions[index]
 
 
 def make_record(problem, split, efficiency_instruction, original_solution, probe_score, rank, total):
@@ -107,7 +109,6 @@ def build_records(problems, split, scores, seed=42):
         problems,
         key=lambda problem: (float(scores[problem_key(split, problem)]), _tie_breaker(problem)),
     )
-    rng = random.Random(seed)
     records = []
     for rank, problem in enumerate(ordered):
         for efficiency_instruction in EFFICIENCY_INSTRUCTIONS:
@@ -116,7 +117,7 @@ def build_records(problems, split, scores, seed=42):
                     problem,
                     split,
                     efficiency_instruction,
-                    _choose_solution(problem, rng),
+                    _choose_solution(problem, efficiency_instruction, seed),
                     scores[problem_key(split, problem)],
                     rank,
                     len(ordered),

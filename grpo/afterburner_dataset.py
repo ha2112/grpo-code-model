@@ -4,8 +4,7 @@
 
 import os
 import re
-import random
-import datasets
+import hashlib
 
 SYSTEM_PROMPT = """
 A conversation between User and Assistant. The user asks a question and provides an original solution, then the Assistant improve it. 
@@ -36,8 +35,21 @@ EFFICIENCY_INSTRUCTIONS = {
     "integral": "both time and memory efficient",
 }
 
+
+def _choose_solution(problem, efficiency_instruction, seed=42):
+    """Choose the same baseline regardless of corpus traversal order."""
+    solutions = problem.get("solutions") or []
+    if not solutions:
+        raise ValueError(f"No baseline solution found for Venus problem {problem.get('problem_id', '')}")
+    key = f"{seed}:{problem.get('problem_id', '')}:{efficiency_instruction}".encode()
+    index = int.from_bytes(hashlib.sha256(key).digest()[:8], "big") % len(solutions)
+    return solutions[index]
+
 if __name__ == "__main__":
+    import datasets
+
     sample_num = 1
+    seed = int(os.environ.get("AFTERBURNER_SEED", "42"))
     local_dir = os.path.expanduser(os.environ.get("AFTERBURNER_DATA_DIR", "~/data/venus"))
     data_source = "Elfsong/Venus_Python"
     dataset = datasets.load_dataset(data_source)
@@ -47,8 +59,7 @@ if __name__ == "__main__":
     # add a row to each data item that represents a unique id
     def make_map_fn(split, efficiency_instruction):
         def process_fn(example, efficiency_instruction=efficiency_instruction):
-            solutions = example['solutions']
-            original_solution = random.choice(solutions)
+            original_solution = _choose_solution(example, efficiency_instruction, seed)
             efficiency_instruction_str = EFFICIENCY_INSTRUCTIONS[efficiency_instruction]
 
             afterburner_prompt = AFTERBURNER_TEMPLATE.format(

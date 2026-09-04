@@ -11,8 +11,11 @@ ROUTE_DIR = Path(__file__).resolve().parent
 
 SYSTEM_PROMPT = """A conversation between User and Assistant. The user gives a
 competitive-programming problem and the Assistant solves it in Python 3. The
-Assistant first reasons inside <thinking> </thinking>, then puts the complete
-program inside <solution> </solution> as one markdown Python code block."""
+Assistant returns only the complete program inside <solution> </solution> as
+one markdown Python code block. Do not include reasoning, analysis, or a
+<thinking> section. Do not write comments or docstrings. Read standard input
+without an interactive prompt. Keep the program at most 40 nonblank lines and
+finish the complete executable program before closing the code block."""
 
 USER_TEMPLATE = """## Problem
 {description}
@@ -20,17 +23,15 @@ USER_TEMPLATE = """## Problem
 ## Original Solution
 {baseline_solution}
 
-## Original Performance
-Unavailable: CodeContests provides no baseline runtime or memory measurements.
-
 ## Output format
 Return exactly:
-<thinking>your reasoning</thinking><solution>```python
+<solution>```python
 complete Python 3 program
 ```</solution>
 
-Fix the original solution if it is incorrect. Otherwise, improve it while
-preserving correctness.
+Use the original solution only as a reference. Rewrite it as concise Python 3.
+Do not add comments, docstrings, explanations, input prompts, or unused code.
+Start with <solution> immediately and always finish the executable program.
 """
 
 

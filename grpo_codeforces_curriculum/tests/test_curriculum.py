@@ -7,7 +7,12 @@ ROUTE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROUTE_DIR))
 
 from codeforces_dataset import make_record, select_codeforces  # noqa: E402
-from codeforces_reward_function import extract_code, format_score  # noqa: E402
+from codeforces_reward_function import (  # noqa: E402
+    _extract_stdout,
+    check_judge,
+    extract_code,
+    format_score,
+)
 
 
 class CurriculumDatasetTests(unittest.TestCase):
@@ -51,11 +56,13 @@ class CurriculumDatasetTests(unittest.TestCase):
             record["reward_model"]["ground_truth"]["baseline_solution"],
             "print(input())",
         )
+        self.assertIn("Do not write comments or docstrings", record["prompt"][0]["content"])
+        self.assertNotIn("<thinking>", record["prompt"][1]["content"])
 
 
 class RewardParsingTests(unittest.TestCase):
     def test_extracts_python_from_required_solution_block(self):
-        response = "<thinking>Reason.</thinking><solution>```python\nprint(1)\n```</solution>"
+        response = "<solution>```python\nprint(1)\n```</solution>"
 
         self.assertEqual(extract_code(response), "print(1)")
         self.assertEqual(format_score(response), 1.0)
@@ -63,6 +70,21 @@ class RewardParsingTests(unittest.TestCase):
     def test_rejects_unstructured_output(self):
         self.assertEqual(extract_code("print(1)"), "")
         self.assertEqual(format_score("print(1)"), 0.0)
+
+    def test_clipped_response_still_exposes_code(self):
+        self.assertEqual(extract_code("<solution>```python\nprint(1)"), "print(1)")
+
+    def test_stdout_parser_handles_null_legacy_field(self):
+        payload = {"output_dict": None, "stdout": "CODEFORCES_RESULT:1/1\n"}
+
+        self.assertEqual(_extract_stdout(payload), "CODEFORCES_RESULT:1/1\n")
+
+    def test_judge_health_check_rejects_an_incorrect_result(self):
+        from unittest.mock import patch
+
+        with patch("codeforces_reward_function._correctness_score", return_value=0.0):
+            with self.assertRaisesRegex(RuntimeError, "expected 1.000"):
+                check_judge()
 
 
 if __name__ == "__main__":

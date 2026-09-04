@@ -9,9 +9,10 @@ Run one route:
 ./run_grpo_comparison.sh venus
 ./run_grpo_comparison.sh absolute
 ./run_grpo_comparison.sh probe
+./run_grpo_comparison.sh venus-probe
 ```
 
-Run all three sequentially:
+Run all four sequentially:
 
 ```bash
 ./run_grpo_comparison.sh all
@@ -52,7 +53,23 @@ It intentionally trains only one small parameter so the exact 3B model fits
 within local memory; distributed GRPO behavior is still verified separately
 by the route launcher tests.
 
-For independent cluster jobs, submit the three single-route commands rather
+For independent cluster jobs, submit the four single-route commands rather
 than `all`. Each route receives the same model, seed, training-step budget,
 learning rate, batch size, rollout count, token limits, GPU count, logger, and
 resume policy.
+
+## One 16 GB NVIDIA GPU
+
+The cluster launcher above uses the GPU count from `.env`. For the verified
+single-GPU LoRA plus 4-bit rollout configuration, use the shared launcher:
+
+```bash
+PYTHON_BIN="$HOME/verl/.venv/bin/python3" ./train_grpo_16gb.sh venus --smoke
+PYTHON_BIN="$HOME/verl/.venv/bin/python3" ./train_grpo_16gb.sh absolute --smoke
+PYTHON_BIN="$HOME/verl/.venv/bin/python3" ./train_grpo_16gb.sh probe --smoke
+PYTHON_BIN="$HOME/verl/.venv/bin/python3" ./train_grpo_16gb.sh venus-probe --smoke
+```
+
+Remove `--smoke` and pass the same `trainer.total_training_steps=N` override
+to each route for a full controlled comparison. The launcher keeps the
+original 3B Venus cold-start model unless `GRPO_MODEL_PATH` is set.
