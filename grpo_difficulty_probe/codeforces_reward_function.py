@@ -9,7 +9,7 @@ import re
 MONOLITH_URL = os.environ.get("MONOLITH_URL", "https://monolith.cool/execute")
 
 RESPONSE_PATTERN = re.compile(
-    r"\A\s*<thinking>.*?</thinking>\s*<solution>.*?</solution>\s*\Z",
+    r"\A\s*(?:<thinking>.*?</thinking>\s*)?<solution>.*?</solution>\s*\Z",
     re.DOTALL,
 )
 CODE_PATTERN = re.compile(r"<solution>\s*```(?:python|python3)?\s*(.*?)```\s*</solution>", re.DOTALL)

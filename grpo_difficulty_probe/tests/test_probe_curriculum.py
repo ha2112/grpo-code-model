@@ -87,19 +87,26 @@ class ProbeCurriculumTests(unittest.TestCase):
         self.assertEqual(extract_code(response), "print(1)")
         self.assertEqual(format_score(response), 1.0)
 
+    def test_reward_accepts_solution_only_format(self):
+        response = "<solution>```python\nprint(1)\n```</solution>"
+
+        self.assertEqual(extract_code(response), "print(1)")
+        self.assertEqual(format_score(response), 1.0)
+
     def test_clipped_response_still_exposes_executable_code(self):
         response = "<thinking>Brief.</thinking><solution>```python\nprint(input())"
 
         self.assertEqual(extract_code(response), "print(input())")
         self.assertEqual(format_score(response), 0.0)
 
-    def test_prompt_requires_short_reasoning_before_the_program(self):
+    def test_prompt_requests_program_without_reasoning(self):
         item = problem("compact", 4, "A", 0)
         scores = {problem_key("train", item): 1000.0}
 
         record = build_records([item], "train", scores)[0]
 
-        self.assertIn("at most 100 words", record["prompt"][0]["content"])
+        self.assertIn("Do not include reasoning", record["prompt"][0]["content"])
+        self.assertNotIn("<thinking>", record["prompt"][1]["content"])
 
     def test_judge_health_check_rejects_an_incorrect_result(self):
         with patch("codeforces_reward_function._correctness_score", return_value=0.0):

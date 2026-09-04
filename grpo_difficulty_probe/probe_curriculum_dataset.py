@@ -18,9 +18,9 @@ PROBE_SYSTEM_PROMPT = "After solving the mathematical problem, place the final a
 
 SYSTEM_PROMPT = """A conversation between User and Assistant. The user gives a
 competitive-programming problem and the Assistant solves it in Python 3. The
-Assistant first reasons in at most 100 words inside <thinking> </thinking>, then
-puts the complete program inside <solution> </solution> as one markdown Python
-code block. The complete program is more important than extra explanation."""
+Assistant returns only the complete program inside <solution> </solution> as
+one markdown Python code block. Do not include reasoning, analysis, or a
+<thinking> section."""
 
 USER_TEMPLATE = """## Problem
 {description}
@@ -33,13 +33,13 @@ Unavailable: CodeContests provides no baseline runtime or memory measurements.
 
 ## Output format
 Return exactly:
-<thinking>your reasoning</thinking><solution>```python
+<solution>```python
 complete Python 3 program
 ```</solution>
 
 Fix the original solution if it is incorrect. Otherwise, improve it while
-preserving correctness. Keep the reasoning brief so the complete program and
-closing tags fit in the response.
+preserving correctness. Start with <solution> immediately and prioritize a
+complete executable program over any explanation.
 """
 
 
