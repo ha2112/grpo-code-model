@@ -44,7 +44,7 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     data.train_batch_size=1 \
     data.dataloader_num_workers=0 \
     data.max_prompt_length=1024 \
-    data.max_response_length=768 \
+    data.max_response_length=1024 \
     reward.num_workers=1 \
     reward.custom_reward_function.path="${SCRIPT_DIR}/codeforces_reward_function.py" \
     reward.custom_reward_function.name=compute_score \
@@ -69,9 +69,11 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     actor_rollout_ref.rollout.free_cache_engine=True \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.n=4 \
+    actor_rollout_ref.rollout.temperature=0.7 \
+    actor_rollout_ref.rollout.top_p=0.95 \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.25 \
-    actor_rollout_ref.rollout.max_model_len=1792 \
-    actor_rollout_ref.rollout.max_num_batched_tokens=1792 \
+    actor_rollout_ref.rollout.max_model_len=2048 \
+    actor_rollout_ref.rollout.max_num_batched_tokens=2048 \
     actor_rollout_ref.rollout.max_num_seqs=2 \
     actor_rollout_ref.rollout.enforce_eager=True \
     actor_rollout_ref.rollout.checkpoint_engine.update_weights_bucket_megabytes=64 \

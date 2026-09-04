@@ -105,8 +105,15 @@ class ProbeCurriculumTests(unittest.TestCase):
 
         record = build_records([item], "train", scores)[0]
 
-        self.assertIn("Do not include reasoning", record["prompt"][0]["content"])
-        self.assertNotIn("<thinking>", record["prompt"][1]["content"])
+        system_prompt = record["prompt"][0]["content"]
+        user_prompt = record["prompt"][1]["content"]
+
+        self.assertIn("Do not include reasoning", system_prompt)
+        self.assertIn("Do not write comments or docstrings", system_prompt)
+        self.assertIn("without an interactive prompt", system_prompt)
+        self.assertIn("at most 40 nonblank lines", system_prompt)
+        self.assertNotIn("<thinking>", user_prompt)
+        self.assertNotIn("Original Performance", user_prompt)
 
     def test_judge_health_check_rejects_an_incorrect_result(self):
         with patch("codeforces_reward_function._correctness_score", return_value=0.0):
@@ -160,6 +167,10 @@ class ProbeCurriculumTests(unittest.TestCase):
         )
         self.assertNotIn("actor_rollout_ref.rollout.quantization=fp8", launcher)
         self.assertIn("uv pip install --python", launcher)
+        self.assertIn("data.max_response_length=1024", launcher)
+        self.assertIn("actor_rollout_ref.rollout.max_model_len=2048", launcher)
+        self.assertIn("actor_rollout_ref.rollout.temperature=0.7", launcher)
+        self.assertIn("actor_rollout_ref.rollout.top_p=0.95", launcher)
 
     def test_probe_score_cache_resumes_without_rescoring(self):
         import tempfile
