@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -14,7 +15,13 @@ from probe_curriculum_dataset import (  # noqa: E402
     problem_key,
     select_codeforces,
 )
-from codeforces_reward_function import check_judge, extract_code, format_score  # noqa: E402
+from codeforces_reward_function import (  # noqa: E402
+    _correctness_score,
+    _extract_stdout,
+    check_judge,
+    extract_code,
+    format_score,
+)
 
 
 def problem(name, contest, index, rating):
@@ -98,6 +105,39 @@ class ProbeCurriculumTests(unittest.TestCase):
         with patch("codeforces_reward_function._correctness_score", return_value=0.0):
             with self.assertRaisesRegex(RuntimeError, "expected 1.000"):
                 check_judge()
+
+    def test_sandbox_stdout_parser_handles_null_legacy_field(self):
+        response = {"output_dict": None, "stdout": "CODEFORCES_RESULT:1/1\n"}
+
+        self.assertEqual(_extract_stdout(response), "CODEFORCES_RESULT:1/1\n")
+
+    def test_sandbox_stdout_parser_handles_outputs_list(self):
+        response = {
+            "output_dict": None,
+            "data": {"outputs": [{"type": "stdout", "data": "CODEFORCES_RESULT:1/1\n"}]},
+        }
+
+        self.assertEqual(_extract_stdout(response), "CODEFORCES_RESULT:1/1\n")
+
+    def test_correctness_request_enables_monolith_output_collection(self):
+        captured = {}
+
+        class FakeResponse:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"output_dict": {"stdout": "CODEFORCES_RESULT:1/1\n"}}
+
+        def post(url, json, timeout):
+            captured.update(json)
+            return FakeResponse()
+
+        with patch.dict(sys.modules, {"requests": SimpleNamespace(post=post)}):
+            score = _correctness_score("print(input())", [{"input": "1\n", "output": "1\n"}])
+
+        self.assertEqual(score, 1.0)
+        self.assertIs(captured["run_profiling"], True)
 
     def test_16gb_launcher_uses_single_gpu_compatible_lora_sync(self):
         launcher = (ROUTE_DIR / "train_single_gpu_16gb.sh").read_text(encoding="utf-8")

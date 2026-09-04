@@ -32,6 +32,47 @@ def format_score(solution_str):
     return 1.0 if RESPONSE_PATTERN.fullmatch(solution_str) and extract_code(solution_str) else 0.0
 
 
+def _extract_stdout(payload):
+    """Read stdout from supported sandbox response layouts."""
+    if not isinstance(payload, dict):
+        return None
+
+    output_dict = payload.get("output_dict")
+    if isinstance(output_dict, dict):
+        for key in ("stdout", "output"):
+            if isinstance(output_dict.get(key), str):
+                return output_dict[key]
+
+    for key in ("stdout", "output"):
+        if isinstance(payload.get(key), str):
+            return payload[key]
+
+    data = payload.get("data")
+    if isinstance(data, dict):
+        if isinstance(data.get("stdout"), str):
+            return data["stdout"]
+        outputs = data.get("outputs")
+        if isinstance(outputs, list):
+            stdout_parts = [
+                item.get("data", "")
+                for item in outputs
+                if isinstance(item, dict)
+                and item.get("type") == "stdout"
+                and isinstance(item.get("data"), str)
+            ]
+            if stdout_parts:
+                return "".join(stdout_parts)
+    return None
+
+
+def _response_summary(payload, limit=2000):
+    try:
+        text = json.dumps(payload, ensure_ascii=False, default=str)
+    except Exception:
+        text = repr(payload)
+    return text if len(text) <= limit else f"{text[:limit]}..."
+
+
 def _runner_code(solution_code, tests):
     """Create one sandbox program that runs the submission against every test."""
     return f'''import io
@@ -80,12 +121,18 @@ def _correctness_score(solution_code, tests, *, raise_on_error=False):
         "language": "python",
         "libraries": [],
         "timeout": 90,
-        "run_profiling": False,
+        # Match the repository's established Afterburner Monolith request.
+        "run_profiling": True,
     }
     try:
         response = requests.post(MONOLITH_URL, json=payload, timeout=95)
         response.raise_for_status()
-        stdout = response.json().get("output_dict", {}).get("stdout", "")
+        response_payload = response.json()
+        stdout = _extract_stdout(response_payload)
+        if stdout is None:
+            raise RuntimeError(
+                f"sandbox returned no stdout; response={_response_summary(response_payload)}"
+            )
         match = RESULT_PATTERN.search(stdout)
         if not match:
             if raise_on_error:
