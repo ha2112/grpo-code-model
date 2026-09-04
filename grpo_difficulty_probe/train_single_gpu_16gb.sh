@@ -28,6 +28,7 @@ if [[ "${1:-}" == "--smoke" ]]; then
 fi
 
 # Train the BF16 policy with LoRA and keep only the rollout copy in FP8.
+# Keep LoRA unmerged: merging clones the 3B BF16 base and exceeds 16 GB.
 exec bash "${SCRIPT_DIR}/train.sh" \
     trainer.use_v1=True \
     trainer.n_gpus_per_node=1 \
@@ -44,7 +45,7 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     actor_rollout_ref.model.lora_rank=8 \
     actor_rollout_ref.model.lora_alpha=16 \
     actor_rollout_ref.model.target_modules=all-linear \
-    actor_rollout_ref.model.lora.merge=True \
+    actor_rollout_ref.model.lora.merge=False \
     actor_rollout_ref.model.enable_activation_offload=True \
     actor_rollout_ref.actor.fsdp_config.model_dtype=bfloat16 \
     actor_rollout_ref.actor.fsdp_config.dtype=bfloat16 \

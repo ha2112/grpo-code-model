@@ -99,6 +99,13 @@ class ProbeCurriculumTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "expected 1.000"):
                 check_judge()
 
+    def test_16gb_launcher_syncs_lora_without_merging_the_base_model(self):
+        launcher = (ROUTE_DIR / "train_single_gpu_16gb.sh").read_text(encoding="utf-8")
+
+        self.assertIn("actor_rollout_ref.model.lora.merge=False", launcher)
+        self.assertNotIn("actor_rollout_ref.model.lora.merge=True", launcher)
+        self.assertIn("actor_rollout_ref.rollout.layered_summon=True", launcher)
+
     def test_probe_score_cache_resumes_without_rescoring(self):
         import tempfile
 
