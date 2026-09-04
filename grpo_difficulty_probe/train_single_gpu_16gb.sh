@@ -29,6 +29,7 @@ fi
 
 # Train the BF16 policy with LoRA and keep only the rollout copy in FP8.
 # Keep LoRA unmerged: merging clones the 3B BF16 base and exceeds 16 GB.
+# Layered summon is incompatible with FSDP NO_SHARD on a one-GPU process.
 exec bash "${SCRIPT_DIR}/train.sh" \
     trainer.use_v1=True \
     trainer.n_gpus_per_node=1 \
@@ -56,7 +57,7 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     actor_rollout_ref.rollout.dtype=bfloat16 \
     actor_rollout_ref.rollout.quantization=fp8 \
     actor_rollout_ref.rollout.load_format=safetensors \
-    actor_rollout_ref.rollout.layered_summon=True \
+    actor_rollout_ref.rollout.layered_summon=False \
     actor_rollout_ref.rollout.free_cache_engine=True \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.n=4 \
