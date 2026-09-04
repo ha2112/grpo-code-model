@@ -79,8 +79,14 @@ would not establish that generated code is correct.
 
 The normal launcher assumes eight GPUs. On one 16 GB NVIDIA GPU, use the
 low-memory launcher instead. It retains the original 3B Venus cold-start
-policy, trains LoRA adapters in BF16, and uses FP8 only for the duplicate vLLM
-rollout copy:
+policy, trains LoRA adapters in BF16, and uses BitsAndBytes 4-bit only for the
+duplicate vLLM rollout copy. Install the rollout dependency first:
+
+```bash
+"$HOME/verl/.venv/bin/python3" -m pip install -U bitsandbytes
+```
+
+Then run:
 
 ```bash
 PYTHON_BIN="$HOME/verl/.venv/bin/python3" \

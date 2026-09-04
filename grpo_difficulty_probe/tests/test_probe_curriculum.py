@@ -152,6 +152,9 @@ class ProbeCurriculumTests(unittest.TestCase):
         self.assertIn("actor_rollout_ref.model.lora.merge=False", launcher)
         self.assertNotIn("actor_rollout_ref.model.lora.merge=True", launcher)
         self.assertIn("actor_rollout_ref.rollout.layered_summon=False", launcher)
+        self.assertIn("actor_rollout_ref.rollout.quantization=bitsandbytes", launcher)
+        self.assertIn("actor_rollout_ref.rollout.load_format=bitsandbytes", launcher)
+        self.assertNotIn("actor_rollout_ref.rollout.quantization=fp8", launcher)
 
     def test_probe_score_cache_resumes_without_rescoring(self):
         import tempfile

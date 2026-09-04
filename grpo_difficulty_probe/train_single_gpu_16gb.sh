@@ -9,6 +9,13 @@ export PROBE_CURRICULUM_POLICY_MODEL="${PROBE_CURRICULUM_POLICY_MODEL:-Elfsong/Q
 export PROBE_CURRICULUM_CHECKPOINT_DIR="${PROBE_CURRICULUM_CHECKPOINT_DIR:-${SCRIPT_DIR}/checkpoints_single_gpu_16gb}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
+# The FP8 rollout path produces corrupted single-token loops on this GPU.
+if ! "${PYTHON_BIN}" -c 'import bitsandbytes' >/dev/null 2>&1; then
+    echo "bitsandbytes is required for the 16 GB rollout copy." >&2
+    echo "Install it with: ${PYTHON_BIN} -m pip install -U bitsandbytes" >&2
+    exit 1
+fi
+
 # Do not spend minutes loading the model when correctness rewards cannot run.
 if [[ "${CODEFORCES_SKIP_PREFLIGHT:-0}" != "1" ]]; then
     "${PYTHON_BIN}" "${SCRIPT_DIR}/codeforces_reward_function.py" --check
@@ -27,7 +34,7 @@ if [[ "${1:-}" == "--smoke" ]]; then
     )
 fi
 
-# Train the BF16 policy with LoRA and keep only the rollout copy in FP8.
+# Train the BF16 policy with LoRA and keep only the rollout copy in 4-bit.
 # Keep LoRA unmerged: merging clones the 3B BF16 base and exceeds 16 GB.
 # Layered summon is incompatible with FSDP NO_SHARD on a one-GPU process.
 exec bash "${SCRIPT_DIR}/train.sh" \
@@ -55,8 +62,8 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     actor_rollout_ref.ref.fsdp_config.model_dtype=bfloat16 \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.dtype=bfloat16 \
-    actor_rollout_ref.rollout.quantization=fp8 \
-    actor_rollout_ref.rollout.load_format=safetensors \
+    actor_rollout_ref.rollout.quantization=bitsandbytes \
+    actor_rollout_ref.rollout.load_format=bitsandbytes \
     actor_rollout_ref.rollout.layered_summon=False \
     actor_rollout_ref.rollout.free_cache_engine=True \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
