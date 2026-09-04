@@ -12,7 +12,7 @@ export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:T
 # The FP8 rollout path produces corrupted single-token loops on this GPU.
 if ! "${PYTHON_BIN}" -c 'import bitsandbytes' >/dev/null 2>&1; then
     echo "bitsandbytes is required for the 16 GB rollout copy." >&2
-    echo "Install it with: ${PYTHON_BIN} -m pip install -U bitsandbytes" >&2
+    echo "Install it with: uv pip install --python ${PYTHON_BIN} 'bitsandbytes>=0.45.3'" >&2
     exit 1
 fi
 
@@ -62,8 +62,9 @@ exec bash "${SCRIPT_DIR}/train.sh" \
     actor_rollout_ref.ref.fsdp_config.model_dtype=bfloat16 \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.dtype=bfloat16 \
-    actor_rollout_ref.rollout.quantization=bitsandbytes \
+    actor_rollout_ref.rollout.quantization=null \
     actor_rollout_ref.rollout.load_format=bitsandbytes \
+    +actor_rollout_ref.rollout.engine_kwargs.vllm.quantization=bitsandbytes \
     actor_rollout_ref.rollout.layered_summon=False \
     actor_rollout_ref.rollout.free_cache_engine=True \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \

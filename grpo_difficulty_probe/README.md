@@ -83,8 +83,12 @@ policy, trains LoRA adapters in BF16, and uses BitsAndBytes 4-bit only for the
 duplicate vLLM rollout copy. Install the rollout dependency first:
 
 ```bash
-"$HOME/verl/.venv/bin/python3" -m pip install -U bitsandbytes
+uv pip install --python "$HOME/verl/.venv/bin/python3" "bitsandbytes>=0.45.3"
 ```
+
+The launcher passes BitsAndBytes through vLLM's `engine_kwargs`. This avoids
+verl's narrower top-level quantization allowlist while leaving the training
+policy in BF16.
 
 Then run:
 
