@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROUTE_DIR = Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ from probe_curriculum_dataset import (  # noqa: E402
     problem_key,
     select_codeforces,
 )
-from codeforces_reward_function import extract_code, format_score  # noqa: E402
+from codeforces_reward_function import check_judge, extract_code, format_score  # noqa: E402
 
 
 def problem(name, contest, index, rating):
@@ -78,6 +79,25 @@ class ProbeCurriculumTests(unittest.TestCase):
 
         self.assertEqual(extract_code(response), "print(1)")
         self.assertEqual(format_score(response), 1.0)
+
+    def test_clipped_response_still_exposes_executable_code(self):
+        response = "<thinking>Brief.</thinking><solution>```python\nprint(input())"
+
+        self.assertEqual(extract_code(response), "print(input())")
+        self.assertEqual(format_score(response), 0.0)
+
+    def test_prompt_requires_short_reasoning_before_the_program(self):
+        item = problem("compact", 4, "A", 0)
+        scores = {problem_key("train", item): 1000.0}
+
+        record = build_records([item], "train", scores)[0]
+
+        self.assertIn("at most 100 words", record["prompt"][0]["content"])
+
+    def test_judge_health_check_rejects_an_incorrect_result(self):
+        with patch("codeforces_reward_function._correctness_score", return_value=0.0):
+            with self.assertRaisesRegex(RuntimeError, "expected 1.000"):
+                check_judge()
 
     def test_probe_score_cache_resumes_without_rescoring(self):
         import tempfile

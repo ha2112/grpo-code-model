@@ -39,6 +39,15 @@ resume without rescoring completed problems. The existing embedding parquet
 is not reused because it contains only rated training problems; this route
 also includes unrated and validation problems.
 
+Run the builder once more after pulling prompt changes. Cached probe scores
+make this a fast parquet rewrite; the probe model does not run again:
+
+```bash
+"$HOME/verl/.venv/bin/python3" \
+  "$HOME/grpo-code-model/grpo_difficulty_probe/probe_curriculum_dataset.py" \
+  --device cuda:0
+```
+
 The generated verl datasets are:
 
 - `data/probe_train_easy_to_hard.parquet`
@@ -75,8 +84,27 @@ rollout copy:
 
 ```bash
 PYTHON_BIN="$HOME/verl/.venv/bin/python3" \
-  ./train_single_gpu_16gb.sh trainer.total_training_steps=1
+  ./train_single_gpu_16gb.sh --smoke
 ```
 
-The one-step override is a smoke test. Remove it for the configured full run
-after the smoke test prints training metrics and exits successfully.
+The smoke run performs one generation/reward/update step but skips final
+validation and checkpoint materialization, which are not needed to establish
+that the training path works. It also checks the Monolith endpoint before
+loading the model. Set `CODEFORCES_SKIP_PREFLIGHT=1` only when that check is
+intentionally undesirable.
+
+This launcher uses `checkpoints_single_gpu_16gb/`, so it will not auto-resume
+the earlier zero-reward checkpoint under `checkpoints/`. Smoke mode also sets
+`trainer.resume_mode=disable` explicitly.
+
+Inspect the smoke metrics before starting the full run. At least one candidate
+group should normally have reward variance, `response_length/clip_ratio`
+should be below `1.0`, and `actor/grad_norm` should be greater than zero. The
+generated responses are retained under `rollouts/` for diagnosis.
+
+Start the full run with:
+
+```bash
+PYTHON_BIN="$HOME/verl/.venv/bin/python3" \
+  ./train_single_gpu_16gb.sh
+```
