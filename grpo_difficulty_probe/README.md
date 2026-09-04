@@ -65,3 +65,18 @@ Defaults and overrides:
 The reward is 80% test-case pass ratio and 20% response-format compliance.
 The probe score is deliberately not a reward: rewarding perceived difficulty
 would not establish that generated code is correct.
+
+### One 16 GB GPU
+
+The normal launcher assumes eight GPUs. On one 16 GB NVIDIA GPU, use the
+low-memory launcher instead. It retains the original 3B Venus cold-start
+policy, trains LoRA adapters in BF16, and uses FP8 only for the duplicate vLLM
+rollout copy:
+
+```bash
+PYTHON_BIN="$HOME/verl/.venv/bin/python3" \
+  ./train_single_gpu_16gb.sh trainer.total_training_steps=1
+```
+
+The one-step override is a smoke test. Remove it for the configured full run
+after the smoke test prints training metrics and exits successfully.
