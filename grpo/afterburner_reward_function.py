@@ -126,9 +126,9 @@ def single_thinking_solution_format(text: str) -> bool:
     pattern = re.compile(
         r"""
         \A\s*                      # optional leading whitespace
-        <thinking>                 # start <thinking>
-            (?:(?!<thinking>).)*?  # allow any content, but no new <thinking>
-        </thinking>\s*             # end <thinking>
+        (?:<thinking>              # optional legacy reasoning block
+            (?:(?!<thinking>).)*?
+        </thinking>\s*)?
         <solution>                 # start <solution>  
             (?:(?!<thinking>|<solution>).)*?  # allow any content, but no new <thinking> or <solution>    
         </solution>\s*             # end <solution>
@@ -162,6 +162,16 @@ def extract_code_blocks(text: str) -> list[dict[str, str]]:
         code = match.group(2).strip()
         blocks.append({"lang": lang, "code": code})
     return blocks
+
+
+def extract_solution_code(text: str) -> str:
+    """Extract fenced solution code even when generation ends before closing tags."""
+    pattern = re.compile(
+        r"<solution>\s*```(?:python|python3)?\s*(.*?)(?:```|</solution>|\Z)",
+        re.DOTALL,
+    )
+    match = pattern.search(text)
+    return match.group(1).strip() if match else ""
 
 
 def _extract_stdout(payload):
@@ -238,12 +248,7 @@ def performance_evalution(solution_str: str, extra_info: dict) -> dict:
     response = {'passed': False, 'time': 90000, 'memory': 1048576, 'integral': 1048576*90000, 'status': 'error'}
     try:
         # Extract the solution code from the solution string
-        solution_code_str = ""
-        solution_blocks = extract_solution_blocks(solution_str)
-        if solution_blocks:
-            solution_code_blocks = extract_code_blocks(solution_blocks[-1])
-            if solution_code_blocks:
-                solution_code_str = solution_code_blocks[-1]['code']
+        solution_code_str = extract_solution_code(solution_str)
         
         # Construct Test Code
         instance = extra_info['instance']
@@ -391,6 +396,16 @@ def afterburner_reward_fn_batch(data_sources, solution_strs, ground_truths, extr
     print(f"[+]  Afterburner Reward Function Batch [Time Cost: {end_time - start_time:.2f}s]")
 
     return afterburner_scores
+
+
+def compute_score(data_source, solution_str, ground_truth, extra_info=None):
+    """verl V1 scalar entrypoint preserving the original reward formula."""
+    return afterburner_reward_fn_batch(
+        [data_source],
+        [solution_str],
+        [ground_truth],
+        [extra_info],
+    )[0]
 
 
 def check_judge():

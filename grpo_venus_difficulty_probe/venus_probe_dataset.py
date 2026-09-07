@@ -21,12 +21,12 @@ EFFICIENCY_INSTRUCTIONS = {
 
 PROBE_SYSTEM_PROMPT = "After solving the mathematical problem, place the final answer inside \\boxed{}"
 
-SYSTEM_PROMPT = """
-A conversation between User and Assistant. The user asks a question and provides an original solution, then the Assistant improve it.
-The assistant first thinks about the reasoning process in the mind and then provides the user with the improved solution.
-The reasoning process and solution are enclosed within <thinking> </thinking> and <solution> </solution> tags, respectively.
-For example, "<thinking>reasoning_process</thinking><solution>improved_solution</solution>".
-"""
+SYSTEM_PROMPT = """A conversation between User and Assistant. The user gives a
+programming problem and an original solution, then the Assistant improves it
+in Python 3. Return only the complete improved code inside <solution>
+</solution> as one markdown Python code block. Do not include reasoning,
+analysis, or a <thinking> section. Do not write comments or docstrings. Keep
+the code concise and finish it before closing the code block."""
 
 AFTERBURNER_TEMPLATE = """
 ## Instructions
@@ -39,9 +39,15 @@ Your task is to implement a solution to the following problem in {target_lang}.
 ## Original Performance
 Passed: {original_passed} / Time: {original_time} / Memory: {original_memory} / Integral: {original_integral}
 ## Output Format
-- Provide the complete solution code in **one markdown code block** with appropriate language identifier.
-- Fix the original solution if it was not passed. Optimize the {efficiency_instruction} performance if the original solution was passed.
-- EXCLUDE ALL explanations, code comments, import/package/library statements, additional classes or functions outside of the starter code scope, or starting code like `if __name__ == "__main__":` or `func main()` or `package main` or `using namespace std;`.
+Return exactly:
+<solution>```python
+complete improved Python 3 code
+```</solution>
+
+Fix the original solution if it did not pass. If it passed, optimize it to be
+{efficiency_instruction}. Preserve the starter-code scope. Do not add
+explanations, comments, docstrings, package declarations, or unused code.
+Start with <solution> immediately and finish the executable code.
 """
 
 

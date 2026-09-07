@@ -37,6 +37,20 @@ class FourRouteLauncherTests(unittest.TestCase):
         self.assertIn("data.max_response_length=1024", launcher)
         self.assertIn("trainer.save_freq=250", launcher)
         self.assertIn("trainer.test_freq=-1", launcher)
+        self.assertNotIn("reward_manager=batch", launcher)
+
+    def test_all_training_routes_use_the_v1_reward_manager(self):
+        scripts = (
+            "grpo/afterburner_train.sh",
+            "grpo_codeforces_curriculum/train.sh",
+            "grpo_difficulty_probe/train.sh",
+            "grpo_venus_difficulty_probe/train.sh",
+        )
+
+        for relative_path in scripts:
+            launcher = (REPO_DIR / relative_path).read_text(encoding="utf-8")
+            self.assertIn("reward_model.reward_manager=naive", launcher)
+            self.assertNotIn("reward_model.reward_manager=batch", launcher)
 
     def test_comparison_runner_includes_venus_probe(self):
         launcher = (REPO_DIR / "run_grpo_comparison.sh").read_text(encoding="utf-8")

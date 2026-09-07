@@ -2,5 +2,7 @@
 runs/
 model-cache/
 model/
+evaluation-models/
+evaluation-results/
 __pycache__/
 *.pyc

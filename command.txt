@@ -1,0 +1,119 @@
+(
+  set -euo pipefail
+
+  cd "$HOME/grpo-code-model"
+  source "$HOME/verl/.venv/bin/activate"
+
+  export PYTHON_BIN="$HOME/verl/.venv/bin/python3"
+  export TMPDIR="$HOME/ray-tmp"
+  export RAY_TMPDIR="$HOME/ray-tmp"
+  export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+  export TOKENIZERS_PARALLELISM=false
+  export MONOLITH_URL="http://127.0.0.1:8000/execute"
+
+  mkdir -p \
+    "$TMPDIR" \
+    "$HOME/grpo-code-model/full-checkpoints" \
+    "$HOME/grpo-code-model/full-logs"
+
+  # Equal training budget for all four routes.
+  STEPS=600
+  SAVE_EVERY=50
+  RUN_NAME="full-${STEPS}-steps-seed42-v1"
+
+  echo "Checking Python environment..."
+  "$PYTHON_BIN" -c \
+    'import torch, verl, bitsandbytes; print("torch:", torch.__version__); print("CUDA:", torch.cuda.is_available())'
+
+  echo "Checking all corpus files..."
+  corpus_files=(
+    "$HOME/data/venus/venus_train.parquet"
+    "$HOME/data/venus/venus_test.parquet"
+    "$HOME/grpo-code-model/grpo_codeforces_curriculum/data/codeforces_train_easy_to_hard.parquet"
+    "$HOME/grpo-code-model/grpo_codeforces_curriculum/data/codeforces_validation_easy_to_hard.parquet"
+    "$HOME/grpo-code-model/grpo_difficulty_probe/data/probe_train_easy_to_hard.parquet"
+    "$HOME/grpo-code-model/grpo_difficulty_probe/data/probe_validation_easy_to_hard.parquet"
+    "$HOME/grpo-code-model/grpo_venus_difficulty_probe/data/venus_probe_train_easy_to_hard.parquet"
+    "$HOME/grpo-code-model/grpo_venus_difficulty_probe/data/venus_probe_test_easy_to_hard.parquet"
+  )
+
+  for corpus_file in "${corpus_files[@]}"; do
+    if [[ ! -s "$corpus_file" ]]; then
+      echo "ERROR: missing or empty corpus: $corpus_file"
+      exit 1
+    fi
+    echo "OK: $corpus_file"
+  done
+
+  echo "Checking Monolith reward execution..."
+  "$PYTHON_BIN" grpo/afterburner_reward_function.py --check
+  "$PYTHON_BIN" grpo_difficulty_probe/codeforces_reward_function.py --check
+
+  wait_for_gpu() {
+    while true; do
+      gpu_free_mib="$(
+        nvidia-smi \
+          --query-gpu=memory.free \
+          --format=csv,noheader,nounits |
+          sed -n '1p' |
+          tr -d ' '
+      )"
+
+      if [[ "$gpu_free_mib" =~ ^[0-9]+$ ]] &&
+         (( gpu_free_mib >= 14000 )); then
+        echo "GPU available: ${gpu_free_mib} MiB free"
+        return
+      fi
+
+      echo "GPU busy: ${gpu_free_mib:-unknown} MiB free; checking again in 60 seconds..."
+      sleep 60
+    done
+  }
+
+  run_route() {
+    route="$1"
+    checkpoint_dir="$HOME/grpo-code-model/full-checkpoints/$RUN_NAME/$route"
+    log_file="$HOME/grpo-code-model/full-logs/$RUN_NAME-$route.log"
+
+    mkdir -p "$checkpoint_dir"
+
+    wait_for_gpu
+    ray stop --force || true
+
+    echo
+    echo "============================================================"
+    echo "Starting route: $route"
+    echo "Checkpoint directory: $checkpoint_dir"
+    echo "Log: $log_file"
+    echo "============================================================"
+
+    PYTHON_BIN="$PYTHON_BIN" \
+    bash train_grpo_16gb.sh "$route" \
+      trainer.total_training_steps="$STEPS" \
+      trainer.total_epochs=100 \
+      trainer.save_freq="$SAVE_EVERY" \
+      trainer.test_freq=-1 \
+      trainer.resume_mode=auto \
+      trainer.default_local_dir="$checkpoint_dir" \
+      trainer.max_actor_ckpt_to_keep=2 \
+      trainer.max_critic_ckpt_to_keep=2 \
+      trainer.experiment_name="${RUN_NAME}-${route}" \
+      trainer.logger=console \
+      data.seed=42 \
+      actor_rollout_ref.rollout.seed=42 \
+      2>&1 | tee -a "$log_file"
+
+    ray stop --force || true
+    echo "Completed route: $route"
+  }
+
+  run_route venus
+  run_route absolute
+  run_route probe
+  run_route venus-probe
+
+  echo
+  echo "All four GRPO routes completed."
+  echo "Checkpoints: $HOME/grpo-code-model/full-checkpoints/$RUN_NAME"
+  echo "Logs: $HOME/grpo-code-model/full-logs"
+)

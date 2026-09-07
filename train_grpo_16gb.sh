@@ -32,8 +32,8 @@ case "${route}" in
         train_file="${data_dir}/venus_train.parquet"
         val_file="${data_dir}/venus_test.parquet"
         reward_file="${route_dir}/afterburner_reward_function.py"
-        reward_name=afterburner_reward_fn_batch
-        reward_manager=batch
+        reward_name=compute_score
+        reward_manager=naive
         checkpoint_dir="${AFTERBURNER_CHECKPOINT_DIR:-${route_dir}/checkpoints_single_gpu_16gb}"
         export AFTERBURNER_DATA_DIR="${data_dir}"
         export AFTERBURNER_MODEL_PATH="${MODEL_PATH}"
@@ -71,8 +71,8 @@ case "${route}" in
         train_file="${data_dir}/venus_probe_train_easy_to_hard.parquet"
         val_file="${data_dir}/venus_probe_test_easy_to_hard.parquet"
         reward_file="${REPO_DIR}/grpo/afterburner_reward_function.py"
-        reward_name=afterburner_reward_fn_batch
-        reward_manager=batch
+        reward_name=compute_score
+        reward_manager=naive
         checkpoint_dir="${VENUS_PROBE_CHECKPOINT_DIR:-${route_dir}/checkpoints_single_gpu_16gb}"
         export VENUS_PROBE_DATA_DIR="${data_dir}"
         export VENUS_PROBE_POLICY_MODEL="${MODEL_PATH}"

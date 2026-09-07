@@ -7,6 +7,8 @@ ROUTE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROUTE_DIR))
 
 from venus_probe_dataset import (  # noqa: E402
+    AFTERBURNER_TEMPLATE,
+    SYSTEM_PROMPT,
     build_records,
     ensure_scores,
     load_score_cache,
@@ -29,6 +31,11 @@ def problem(problem_id, question=None):
 
 
 class VenusProbeDatasetTests(unittest.TestCase):
+    def test_prompt_requests_concise_solution_only_output(self):
+        self.assertIn("Do not include reasoning", SYSTEM_PROMPT)
+        self.assertIn("Do not write comments or docstrings", SYSTEM_PROMPT)
+        self.assertNotIn("<thinking>", AFTERBURNER_TEMPLATE)
+
     def test_probe_order_expands_each_problem_into_adjacent_objectives(self):
         hard = problem("hard")
         easy = problem("easy")
