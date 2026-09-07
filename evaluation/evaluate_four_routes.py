@@ -207,6 +207,10 @@ def validate_adapter(adapter_dir: Path) -> dict:
 
 def venus_components(module, text: str, ground_truth: dict, extra_info: dict) -> dict:
     result = module.performance_evalution(text, extra_info)
+    if result.get("infrastructure_error"):
+        raise RuntimeError(
+            f"Venus sandbox infrastructure failure: {result['infrastructure_error']}"
+        )
     baseline_passed = bool(ground_truth.get("passed", False))
     current_passed = bool(result.get("passed", False))
     if baseline_passed and current_passed:
@@ -242,7 +246,9 @@ def venus_components(module, text: str, ground_truth: dict, extra_info: dict) ->
 
 def codeforces_components(module, text: str, ground_truth: dict) -> dict:
     tests = ground_truth.get("tests", [])
-    correctness = module._correctness_score(module.extract_code(text), tests)
+    correctness = module._correctness_score(
+        module.extract_code(text), tests, raise_on_error=True
+    )
     format_value = float(module.format_score(text))
     return {
         "passed": correctness >= 1.0 - 1e-12,

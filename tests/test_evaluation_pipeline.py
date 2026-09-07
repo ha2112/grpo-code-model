@@ -2,6 +2,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 REPO_DIR = Path(__file__).resolve().parents[1]
@@ -46,6 +47,38 @@ class EvaluationPipelineTests(unittest.TestCase):
         self.assertEqual(self.evaluator.pass_at_k(0, 4, 4), 0.0)
         self.assertEqual(self.evaluator.pass_at_k(1, 4, 4), 1.0)
         self.assertAlmostEqual(self.evaluator.pass_at_k(2, 4, 1), 0.5)
+
+    def test_codeforces_judge_failure_aborts_evaluation(self):
+        def correctness_score(*args, **kwargs):
+            self.assertTrue(kwargs["raise_on_error"])
+            raise RuntimeError("sandbox request failed")
+
+        reward = SimpleNamespace(
+            _correctness_score=correctness_score,
+            extract_code=lambda text: text,
+            format_score=lambda text: 1.0,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "sandbox request failed"):
+            self.evaluator.codeforces_components(reward, "print(1)", {"tests": [{}]})
+
+    def test_venus_infrastructure_failure_aborts_evaluation(self):
+        reward = SimpleNamespace(
+            performance_evalution=lambda text, extra_info: {
+                "passed": False,
+                "status": "error",
+                "infrastructure_error": "no space left on device",
+            },
+            single_thinking_solution_format=lambda text: 1.0,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "no space left on device"):
+            self.evaluator.venus_components(
+                reward,
+                "response",
+                {"passed": False},
+                {"efficiency_instruction": "time"},
+            )
 
     def test_aggregate_keeps_suites_separate(self):
         records = []

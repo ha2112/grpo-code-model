@@ -241,11 +241,35 @@ def _extract_monolith_result(payload):
     response["integral"] = _metric(payload, "integral", response["integral"])
     return response
 
+
+def _sandbox_infrastructure_error(payload):
+    """Return a service-side failure that must not be scored as a bad solution."""
+    if not isinstance(payload, dict):
+        return None
+    error = payload.get("error")
+    if not isinstance(error, str):
+        return None
+    markers = (
+        "no space left on device",
+        "http+docker://",
+        "containerd",
+        "docker daemon",
+        "failed to create prepare snapshot",
+    )
+    return error if any(marker in error.lower() for marker in markers) else None
+
 def performance_evalution(solution_str: str, extra_info: dict) -> dict:
     import requests
 
     # Integrate functional correctness and efficiency
-    response = {'passed': False, 'time': 90000, 'memory': 1048576, 'integral': 1048576*90000, 'status': 'error'}
+    response = {
+        'passed': False,
+        'time': 90000,
+        'memory': 1048576,
+        'integral': 1048576*90000,
+        'status': 'error',
+        'infrastructure_error': None,
+    }
     try:
         # Extract the solution code from the solution string
         solution_code_str = extract_solution_code(solution_str)
@@ -281,17 +305,24 @@ def performance_evalution(solution_str: str, extra_info: dict) -> dict:
         monolith_url = os.environ.get('MONOLITH_URL', 'https://monolith.cool/execute')
         monolith_response = requests.post(monolith_url, json=data, timeout=90)
         if monolith_response.status_code == 200:
-            response = _extract_monolith_result(monolith_response.json())
+            payload = monolith_response.json()
+            response = _extract_monolith_result(payload)
+            response['infrastructure_error'] = _sandbox_infrastructure_error(payload)
         elif monolith_response.status_code == 413:
             response['status'] = "too large"
         else:
-            raise requests.exceptions.RequestException("API Error: " + str(monolith_response.content), monolith_response.status_code)
+            response['infrastructure_error'] = (
+                f"Monolith HTTP {monolith_response.status_code}: "
+                f"{monolith_response.content!r}"
+            )
     except requests.exceptions.ReadTimeout as e:
         response['status'] = 'timeout (server)'
     except requests.exceptions.ConnectionError as e:
         response['status'] = 'timeout (client)'
+        response['infrastructure_error'] = str(e)
     except Exception as e:
         response['status'] = 'error'
+        response['infrastructure_error'] = str(e)
     return response
 
 def improvement_reward_fn_batch(data_sources, solution_strs, ground_truths, extra_infos=None) -> list[float]:        

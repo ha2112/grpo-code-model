@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROUTE_DIR))
 
 from afterburner_reward_function import (  # noqa: E402
     _extract_monolith_result,
+    _sandbox_infrastructure_error,
     check_judge,
     compute_score,
     extract_solution_code,
@@ -53,6 +54,11 @@ class AfterburnerRewardTests(unittest.TestCase):
         self.assertEqual(result["time"], 0.25)
         self.assertEqual(result["memory"], 1024)
         self.assertEqual(result["integral"], 256)
+
+    def test_docker_storage_failure_is_infrastructure_error(self):
+        error = "http+docker://localhost: no space left on device"
+
+        self.assertEqual(_sandbox_infrastructure_error({"error": error}), error)
 
     def test_health_check_rejects_failed_execution(self):
         with patch("afterburner_reward_function.performance_evalution", return_value={"passed": False}):
