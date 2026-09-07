@@ -50,3 +50,14 @@ bash evaluate_four_routes.sh
 The model merger follows verl's FSDP conversion interface and keeps the
 resulting Hugging Face model directories in `evaluation-models/step-600/`. Do
 not remove them until the evaluation is complete.
+
+## Recover an interrupted evaluation
+
+`recover_four_routes.py` separates generation from judging. Its `generate`
+command copies archived outputs without their old scores and generates only
+missing completion keys. Its `rescore` command later judges every saved output,
+resumes at individual completion granularity, and writes the normal summaries.
+
+The recovery directory uses `generations.jsonl` for unscored model outputs and
+`predictions.jsonl` for clean, newly judged records. The archived input file is
+never modified.
